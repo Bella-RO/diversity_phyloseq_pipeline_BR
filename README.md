@@ -16,10 +16,8 @@ The proposed workflow enables the assessment of richness, alpha and beta diversi
 4. **Comparisons between treatments** (ANOVA, Kruskal–Wallis, Dunn tests)  
 ---
 ## Included files
-- `flujo_microbiota_abejas.png` — General diagram of the bioinformatics workflow.  
-- `phyloseq_creation.R` — Script for building and modifying the `phyloseq` object.  
-- `diversity_phyloseq.R` — Script for alpha and beta diversity analyses based on the `phyloseq` object.  
-- `abundance_phyloseq.R` — Script for relative abundance based on the `phyloseq` object.  
+- `diversity_pipeline.R` — Script for alpha and beta diversity analyses based on the `phyloseq` object.  
+- `abundance_pipeline.R` — Script for relative abundance based on the `phyloseq` object.  
 ---
 ## Author
 **Bella Romero (BR)**  
