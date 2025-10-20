@@ -1,0 +1,87 @@
+#----- Relative abundance ----
+#Calculate relative abundance
+ps.A <- transform_sample_counts(ps, function(OTU) (OTU / sum(OTU)) * 100)
+
+#Convert the phyloseq object to a data.frame to produce a borderless plot
+otu_d <- psmelt(ps.A)
+head(otu_d) #
+write_xlsx(otu_d, "C:/Users/~/Abundance_data.xlsx") #Save
+
+#Convert Genus to character type
+otu_d <- otu_d %>%
+  mutate(Genus = as.character(Genus)) 
+
+#Define the most abundant genera to order the genus names in the plot
+ps.gen <- tax_glom(ps.A, taxrank = "Genus", NArm = FALSE) #Collapse to the Genus level
+gen_sums <- taxa_sums(ps.gen) #Sum by taxa (each taxon is now a collapsed genus).
+gen_sums_sorted <- sort(gen_sums, decreasing = TRUE) #Order from highest to lowest
+tax_gen <- as.data.frame(tax_table(ps.gen)) #Retrieve the corresponding genus names
+genus_names <- tax_gen[names(gen_sums_sorted), "Genus"] |> as.character()
+genus_mean_pct <- gen_sums_sorted / nsamples(ps.gen) #(Optional) Convert those sums to the mean percentage per sample
+top10_by_sum  <- head(genus_names, 10) #View the top 10 genera by total sum (or by mean percentage)
+top10_by_mean <- head(genus_names[order(genus_mean_pct, decreasing = TRUE)], 10)
+head(top10_by_sum)
+head(top10_by_mean)
+
+#Define the desired order for the genera
+genus_order <- c("Others", "Anaerosporobacter", "Apibacter", "Apilactobacillus", "Bifidobacterium", "Bombella", "Bombilactobacillus", "Commensalibacter", "Frischella", "Gilliamella", "Lactobacillus", "Providencia", "Pseudomonas", "Snodgrassella")
+
+#Keep only the genera with more than 1% abundance
+ott <- otu_d %>%
+  mutate(Genus = ifelse(Abundance > 0.5, Genus, "Others")) %>% #Group the genera and define their order
+mutate(Genus = factor(Genus, levels = genus_order))  #Set the order of the genera
+
+#Define the factor order of the treatments for the plot
+ott$Sampling.Day <- factor(ott$Sampling.Day, levels = c("12 days", "9 days", "6 days", "3 days", "0 days"))
+ott$Treatment <- factor(otu_d$Treatment, levels = c("C", "HA", "GB-3", "CN", "HAN", "GBN-3"))
+
+#Create a color palette
+my_colors <- c(
+  "#ffcc33", "#beaed4", "#fdc086", "#ffff99", "#6699ff", 
+  "#1b9e77", "#e729a8", "orange", "brown", "darkblue", 
+  "#993399", "pink",    "#3300cc", "yellow", "#333333", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3",
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3",
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3",
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3",
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3",
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", 
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3",
+  "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3", "#b3cde3",
+  "#b3cde3", "#b3cde3", "#b3cde3"
+)
+
+#Stacked bar plot without borders (vertical orientation)
+E <- ggplot(ott, aes(x = Sampling.Day, y = Abundance, fill = Genus)) +  
+  geom_bar(stat = "identity", position = "stack", colour = NA) +  #Remove the borders using colour = NA
+  facet_wrap(~ Treatment, scales = "free_x") +  
+  theme_minimal() +  
+  scale_fill_manual(values = my_colors)  
+
+E + xlab("")  #the X-axis title blank
+
+#Stacked bar plot without borders (horizontal orientation)
+A <- ggplot(ott, aes(x=Abundance, y=Sampling.Day, fill=Genus)) + 
+  geom_bar(stat="identity", position="stack", colour=NA) +  #Remove the borders using colour = NA
+  facet_wrap(~Treatment, scales="free_y") +  #Use facet_wrap() so that each treatment has its own panel
+  theme_minimal() +  #Use any theme you prefer
+  scale_fill_manual(values= my_colors) +  #Adjust the colors if necessary
+  labs(y="Día de muestreo", x="Abundancia") +  #Axis labels
+  theme(axis.text.y = element_text(angle = 0, hjust = 1))  # Adjust the Y-axis labels if necessary
+
+A + xlab("")  #the X-axis title blank
