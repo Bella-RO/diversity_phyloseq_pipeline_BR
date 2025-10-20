@@ -1,0 +1,111 @@
+#----- calculate diversity indices ----
+#Read the phyloseq dataframe
+ps <- readRDS("~/ASSIGNMENT_RESULT_16s.rds")
+
+#Calcular todos los indices de diversidad
+diversity_indices <- estimate_richness(ps, measures = c("Observed", "Chao1", "ACE", "Shannon", "Simpson", "InvSimpson"))
+print(diversity_indices) #See the table with the diversity indices
+
+#Save Excel with results
+write_xlsx(diversity_indices, "~/diversity_indices.xlsx") #Guardar la tabla como archivo Excel
+
+#Calculate only Shannon and Simpson
+div<- estimate_richness(ps, measures = c("Shannon", "Simpson"))
+print(div) #See the table with the diversity indices
+
+#----- Richness plot ----
+#If necessary, arrange (or reorder) the factors for the experimental days (Sampling.Days) and the treatment factors (Treatment)
+sample_data(ps)$Sampling.Day <- factor(sample_data(ps)$Sampling.Day, levels = c("0 days", "3 days", "6 days", "9 days", "12 days"))
+sample_data(ps)$Treatment <- factor(sample_data(ps)$Treatment, levels = c("C", "CN", "HA", "HAN", "GB-3", "GBN-3"))
+
+#Alpha diversity plot based on Shannon and Simpson indices
+p <- plot_richness(ps, x="Sampling.Day", measures=c("Shannon", "Simpson"), color="Treatment", shape="Nosema.Infection") + #Remove measures = c(" ") if you want to include all diversity indices. 
+  scale_color_manual(values = c("C" = "#cccccc", "CN" = "#636363", "HA" = "#00FF00", "HAN" = "#548B54", "GB-3" = "#dfc27d", "GBN-3" = "#a6611a")) +   #Assign distinct colors to each treatment
+  scale_shape_manual(values = c("Non-Infected" = 15, "Infected" = 17)) +  #Change point shapes to distinguish bees with Nosema infection from those without infection
+  labs(title = "Alpha diversity index") +  #Plot title
+  theme_minimal()   #Theme style
+p + xlab("") #Leave the X-axis title blank
+
+#----- Statistical analysis -----
+#Extract the necessary tables from the phyloseq object for the analyses and boxplots
+alpha_div <- div #Table of diversity indices
+meta <- sample_data(ps) #Metadata table from the phyloseq object
+df <- cbind(alpha_div, meta) #Combine the diversity and metadata tables
+
+#Kruskal-Wallis 
+#Adjust for each variable(Treatment, Sampling.Days)
+#Shannon analysis
+Shannon_T <- kruskal.test(Shannon ~ Treatment, data = df)
+print(Shannon_T)
+capture.output(summary(Shannon_T), file = "~/Shannon_T.txt") #Save
+
+#Simpson analysis
+Simpson_T <- kruskal.test(Simpson ~ Treatment, data = df)
+print(Simpson_T)
+capture.output(summary(Simpson_T), file = "~/Simpson_T.txt") #Save
+
+#Dunn test
+#Adjust for each variable (Treatment, Sampling.Days). Use only if there are significant results in the Kruskal test
+#Shannon analysis
+dunn_Shannon_T <- dunn.test(df$Shannon, df$Treatment, method = "bh") #bh: Bonferroni
+print(dunn_Shannon_T)
+capture.output(summary(dunn_Shannon_T), file = "~/dunn_Shannon_D.txt")
+
+#Simpson analysis
+dunn_Simpson_D <- dunn.test(df$Simpson, df$Sampling.Day, method = "bh") 
+print(dunn_Simpson_D)
+capture.output(summary(dunn_Simpson_D), file = "~/dunn_Simpson_D.txt")
+
+#----- Diversity boxplot ----
+#Boxplot for treatment and infection in alpha diversity
+#Shannon boxplot
+P1 <- ggplot(df, aes(x = Treatment, y = Shannon, fill = Treatment)) +
+  geom_boxplot(fill=c("C" = "#cccccc","CN" = "#636363", "HA" = "#00FF00", "HAN" = "#548B54","GB-3" = "#dfc27d", "GBN-3" = "#a6611a")) +
+  labs(title = "Shannon",
+       x = "Treatment",
+       y = "Shannon") +
+  theme_minimal() +
+  theme(legend.position = "none") +  #This removes the legend
+  geom_signif(comparisons = list(c("GBN-3", "HA")),
+              map_signif_level = TRUE) +
+  annotate("text", x = 6, y = min(df$Shannon, na.rm = TRUE) * 0.95, #Manually add the p-value for Infection, obtained from the statistical analysis
+           label = "Infection p = 0.0168*", size = 5, color = "black", hjust = 1, vjust = 0)
+print(P1)
+
+#Simpson boxplot
+P2 <- ggplot(df, aes(x = Treatment, y = Simpson, fill = Treatment)) +
+  geom_boxplot(fill=c("C" = "#cccccc","CN" = "#636363", "HA" = "#00FF00", "HAN" = "#548B54","GB-3" = "#dfc27d", "GBN-3" = "#a6611a")) +
+  labs(title = "Simpson",
+       x = "Treatment",
+       y = "Simpson") +
+  theme_minimal() +
+  theme(legend.position = "none") +  #This removes the legend
+  geom_signif(comparisons = list(c("GBN-3", "HA")),
+              map_signif_level = TRUE) +
+  annotate("text", x = 6, y = min(df$Simpson, na.rm = TRUE) * 0.95, #Manually add the p-value for Infection, obtained from the statistical analysis
+           label = "Infection p = 0.1184", size = 5, color = "black", hjust = 1, vjust = 0)
+print(P2)
+
+#Combine P1 and P2 into a single grid
+combined_plot <- plot_grid(P1, P2, ncol = 2)
+print(combined_plot)
+
+#----- Bray–Curtis visualization ----
+#Transform the data to relative proportions, as required for Bray–Curtis distance calculations
+ps.prop <- transform_sample_counts(ps, function(otu) otu/sum(otu))
+ord.nmds.bray <- ordinate(ps.prop, method="NMDS", distance="bray")
+
+#Create a plot without shading
+P3 <- plot_ordination(ps.prop, ord.nmds.bray, color="Treatment", shape="Nosema.Infection", title="Bray NMDS") +
+  scale_color_manual(values = c("C" = "#cccccc","CN" = "#636363", "HA" = "#00FF00", "HAN" = "#548B54","GB-3" = "#dfc27d", "GBN-3" = "#a6611a"))   #Treatment color
+print(P3)
+
+# Create a plot with shading
+P4 <- plot_ordination(ps.prop, ord.nmds.bray, type = "samples", color = "Treatment", shape = "Nosema.Infection") +
+  geom_polygon(aes(fill = Treatment, group = Treatment), alpha = 0.2, color = NA) +  # sombrear por tratamiento
+  geom_point(size = 5) +  #Point size
+  scale_color_manual(values = c("C" = "#cccccc", "CN" = "#636363", "HA" = "#00FF00", "HAN" = "#548B54", "GB-3" = "#dfc27d", "GBN-3" = "#a6611a")) +  #Treatment color
+  scale_fill_manual(values = c("C" = "#cccccc", "CN" = "#636363", "HA" = "#00FF00", "HAN" = "#548B54", "GB-3" = "#dfc27d", "GBN-3" = "#a6611a")) +
+  scale_shape_manual(values = c("Non-Infected" = 15, "Infected" = 17)) +
+  ggtitle("Bray NMDS")  #Plot title
+print(P4)
