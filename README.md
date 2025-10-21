@@ -17,7 +17,8 @@ The proposed workflow enables the assessment of richness, alpha and beta diversi
 ---
 ## Included files
 - `diversity_pipeline.R` — Script for alpha and beta diversity analyses based on the `phyloseq` object.  
-- `abundance_pipeline.R` — Script for relative abundance based on the `phyloseq` object.  
+- `abundance_pipeline.R` — Script for relative abundance based on the `phyloseq` object.
+- `heatmap_pipeline.R` — Script for heatmap gene expression of bee.
 ---
 ## Author
 **Bella Romero (BR)**  
@@ -25,4 +26,4 @@ The workflow and scripts were developed and adapted by Bella Romero (2025) as pa
 Acknowledgment is given to colleagues for their contributions to specific bioinformatics modules.
 ---
 ## Suggested citation
-> Romero, B. (2025). *Bioinformatics workflow for studying bacterial species diversity in the bee microbiota based on phyloseq objects.* GitHub: [https://github.com/bella-RO/diversity_phyloseq_pipeline_BR](https://github.com/bella-RO/diversity_phyloseq_pipeline_BR)
+> Romero, B., Zuern, S. (2025). *Bioinformatics workflow for studying bacterial species diversity in the bee microbiota based on phyloseq objects.* GitHub: [https://github.com/bella-RO/diversity_phyloseq_pipeline_BR](https://github.com/bella-RO/diversity_phyloseq_pipeline_BR)
