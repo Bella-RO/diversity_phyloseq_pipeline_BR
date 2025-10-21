@@ -1,0 +1,75 @@
+#-----Heatmap-----
+# Prepare the data
+rownames(Gene_heatmap) <- Gene_heatmap$Expression      # Set 'Expression' as row names
+Gene_matrix <- as.matrix(Gene_heatmap[, -1])           # Remove 'Expression' column and convert to matrix
+
+# Check the matrix structure
+str(Gene_matrix)
+
+# Create the heatmap
+pheatmap(Gene_matrix,
+         scale = "none",                               # No scaling
+         cluster_rows = FALSE,                         # No clustering for rows
+         cluster_cols = FALSE,                         # No clustering for columns
+         color = colorRampPalette(c("white", "#551A8B"))(100), # Color gradient
+         display_numbers = TRUE,                       # Display values in cells
+         number_color = "black",
+         number_size = 3,                          
+         number_format = "%.2f",                       # Number format
+         cellheight = 18,                              # Cell height
+         cellwidth = 45)                               # Cell width
+
+setwd("C:/Users/Sigisfredo Garnica/Desktop/Masterthesis_Biene Maja/R/Figures")
+
+# Create the heatmap object
+heatmap_expression_plot <- pheatmap(Gene_matrix,
+                         scale = "none",                               # No scaling
+                         cluster_rows = FALSE,                         # No clustering for rows
+                         cluster_cols = FALSE,                         # No clustering for columns
+                         color = colorRampPalette(c("white", "#551A8B"))(100), # Color gradient
+                         display_numbers = TRUE,                       # Display values in cells
+                         number_color = "black", 
+                         number_size = 3,
+                         number_format = "%.2f",                       # Number format
+                         cellheight = 18,                              # Cell height
+                         cellwidth = 45)
+
+#---Heatmap_abundance---
+# Check if 'data' is a data frame
+is.data.frame(Table_genero)
+class(Table_genero)
+str(Table_genero)
+# Exclude the Treatment column to keep only numeric data
+Table_genero_matrix <- Table_genero [, -1]
+# Convert to a numeric matrix
+Table_genero_matrix <- as.matrix(Table_genero_matrix)
+class(Table_genero_matrix)
+# Use the Treatment column as row names
+rownames(Table_genero_matrix) <- Table_genero$Treatment
+str(Table_genero_matrix)
+
+
+pheatmap(Table_genero_matrix,
+         scale = "none",
+         cluster_rows = FALSE,
+         cluster_cols = FALSE,
+         color = colorRampPalette(c("white", "#00688B"))(100),
+         display_numbers = TRUE,
+         number_color = "black",
+         number_size = 3,
+         number_format = "%.2f",
+         cellheight = 14,                 # Adjust cell height
+         cellwidth = 30)     
+
+# Create the heatmap object
+heatmap_abundance_plot <- pheatmap(Table_genero_matrix,
+                                    scale = "none",
+                                    cluster_rows = FALSE,
+                                    cluster_cols = FALSE,
+                                    color = colorRampPalette(c("white", "#00688B"))(100),
+                                    display_numbers = TRUE,
+                                    number_color = "black",
+                                    number_size = 3,
+                                    number_format = "%.2f",
+                                    cellheight = 14,
+                                    cellwidth = 30) 
