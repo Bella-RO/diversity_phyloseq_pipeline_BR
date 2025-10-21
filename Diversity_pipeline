@@ -90,6 +90,94 @@ print(P2)
 combined_plot <- plot_grid(P1, P2, ncol = 2)
 print(combined_plot)
 
+#---PERMANOVA_Bray Curtis---
+# Calculate Bray-Curtis distance
+bray_dist <- distance(ps, method = "bray")
+# Check the resulting distance matrix
+bray_dist
+# Perform NMDS ordination
+nmds <- ordinate(ps, method = "NMDS", distance = bray_dist)
+# Check the sample data
+sample_data(ps)
+# Check the column names of the sample_data_ps data frame
+colnames(sample_data_ps)
+# View the first few rows to identify the correct column
+head(sample_data_ps)
+
+# Convert sample_data to a standard data.frame
+sample_data_ps <- as(sample_data(ps), "data.frame")
+
+# Subset metadata to match samples in the Bray-Curtis distance matrix
+sample_data_ps <- sample_data_ps[rownames(sample_data_ps) %in% rownames(as.matrix(bray_dist)), ]
+
+# Ensure relevant columns are factors
+sample_data_ps$Treatment <- factor(sample_data_ps$Treatment)
+sample_data_ps$Nosema.Infection <- factor(sample_data_ps$Nosema.Infection)
+
+# Verify alignment and structure
+rownames(sample_data_ps)  # Metadata row names
+rownames(as.matrix(bray_dist))  # Distance matrix row names
+str(sample_data_ps)  # Inspect structure
+summary(sample_data_ps)  # Summarize metadata
+identical(rownames(sample_data_ps), rownames(as.matrix(bray_dist)))
+# Perform PERMANOVA
+adonis_result <- adonis2(bray_dist ~ Treatment, data = sample_data_ps)
+# View results
+print(adonis_result)
+
+# Define all treatments
+treatments <- c("C", "CN", "HA", "GBN-3", "HAN", "GBN-3")
+# Generate all possible treatment pairs
+pairs <- t(combn(treatments, 2))
+# Print pairs
+print(pairs)
+
+# Run adonis2 on the subset
+# Run the loop for each pair
+results <- lapply(1:nrow(pairs), function(i) {
+  pair <- pairs[i, ]
+  
+  # Subset the data by the treatment pair
+  subset_data <- subset(sample_data_ps_df, Treatment %in% pair)
+  
+  # Check if the subsetting works properly
+  if (nrow(subset_data) == 0) {
+    warning("No data for pair: ", paste(pair, collapse = " vs "))
+    return(NULL)  # Skip empty subsets
+  }
+  
+  # Create Bray-Curtis distance matrix for the subset
+  subset_dist <- as.matrix(bray_dist)[rownames(subset_data), rownames(subset_data)]
+  subset_dist <- as.dist(subset_dist)  # Convert to distance object
+  
+  # Run PERMANOVA
+  adonis_result <- adonis2(subset_dist ~ Treatment, data = subset_data)
+  
+  # Return the result for this pair
+  return(adonis_result)
+})
+  
+# Name the results based on the treatment pairs
+names(results) <- apply(pairs, 1, function(pair) paste(pair, collapse = " vs "))
+# Display the results
+results
+
+#---PERMDISP---
+# Compute Bray-Curtis distance matrix
+distance_matrix <- phyloseq::distance(ps, method = "bray")
+# Extract grouping variable from the phyloseq object's sample_data
+groups <- sample_data(ps)$Treatment  # Replace 'Group' with the actual column name in your data
+# Perform PERMDISP analysis
+permdisp_result <- betadisper(distance_matrix, groups)
+# Visualize the dispersion
+boxplot(permdisp_result)
+# Perform permutation test for significance
+perm_test <- anova(permdisp_result)
+print(perm_test)
+
+# Print the pairwise results
+print(pairwise_results$pairwise)  # Displays the pairwise p-values
+
 #----- Bray–Curtis visualization ----
 #Transform the data to relative proportions, as required for Bray–Curtis distance calculations
 ps.prop <- transform_sample_counts(ps, function(otu) otu/sum(otu))
@@ -109,3 +197,129 @@ P4 <- plot_ordination(ps.prop, ord.nmds.bray, type = "samples", color = "Treatme
   scale_shape_manual(values = c("Non-Infected" = 15, "Infected" = 17)) +
   ggtitle("Bray NMDS")  #Plot title
 print(P4)
+
+#---PERMANOVA Binary Jaccard---
+
+# Convert sample_data to a standard data.frame
+sample_data_ps <- as(sample_data(ps), "data.frame")
+
+# Subset metadata to match samples in the Binary-Jaccard distance matrix
+sample_data_ps <- sample_data_ps[rownames(sample_data_ps) %in% rownames(as.matrix(binary_jaccard_dist)), ]
+# Ensure relevant columns are factors
+sample_data_ps$Treatment <- factor(sample_data_ps$Treatment)
+sample_data_ps$Nosema.Infection <- factor(sample_data_ps$Nosema.Infection)
+
+# Verify alignment and structure
+rownames(sample_data_ps)  # Metadata row names
+rownames(as.matrix(binary_jaccard_dist))  # Distance matrix row names
+str(sample_data_ps)  # Inspect structure
+summary(sample_data_ps)  # Summarize metadata
+# Check if the sample names match
+all(rownames(sample_data_ps) %in% rownames(as.matrix(binary_jaccard_dist)))  # Should return TRUE
+# Print the distance matrix
+print(binary_jaccard_dist)
+
+# Perform PERMANOVA on the binary Jaccard distance matrix
+permanova_result <- adonis2(binary_jaccard_dist ~ Treatment, data = sample_data_ps)
+
+# Print the result
+print(permanova_result)
+
+# Define all treatments
+treatments <- c("C", "CN", "HA", "GB-3", "HAN", "GBN-3")
+# Generate all possible treatment pairs
+pairs <- t(combn(treatments, 2))
+# Print pairs
+print(pairs)
+
+# Run adonis2 on the subset for each treatment pair with Binary-Jaccard distance matrix
+results <- lapply(1:nrow(pairs), function(i) {
+  pair <- pairs[i, ]
+  
+  # Subset the data by the treatment pair
+  subset_data <- subset(sample_data_ps_df, Treatment %in% pair)
+  
+  # Check if subsetting works correctly (skip empty pairs)
+  if (nrow(subset_data) == 0) {
+    warning("No data for pair: ", paste(pair, collapse = " vs "))
+    return(NULL)  # Skip empty subsets
+  }
+  
+  # Ensure 'Treatment' is a factor in the subset
+  subset_data$Treatment <- as.factor(subset_data$Treatment)
+  
+  # Create Binary-Jaccard distance matrix for the subset
+  subset_dist <- as.matrix(binary_jaccard_dist)[rownames(subset_data), rownames(subset_data)]
+  subset_dist <- as.dist(subset_dist)  # Convert to distance object
+  
+  # Run PERMANOVA using adonis2
+  adonis_result <- adonis2(subset_dist ~ Treatment, data = subset_data)
+  
+  # Return the result for this pair
+  return(adonis_result)
+})
+
+# Name the results based on the treatment pairs
+names(results) <- apply(pairs, 1, function(pair) paste(pair, collapse = " vs "))
+# Display the results
+results
+
+
+# Create a Jaccard dissimilarity matrix
+print(binary_jaccard_dist)
+
+
+# Extract the treatment group and ensure it's a vector
+treatment_group <- sample_data_ps$Treatment
+# Check the length of treatment_group (should be 27, matching the number of samples)
+length(treatment_group)
+# Check if treatment_group is a factor
+is.factor(treatment_group)
+# Ensure the order of treatment_group matches the row names in binary_jaccard_dist
+treatment_group <- treatment_group[match(rownames(sample_data_ps), attr(binary_jaccard_dist, "Labels"))]
+# Verify the length again
+length(treatment_group)  # Should be 27 now
+
+# Compute beta dispersion using the binary Jaccard distance matrix
+beta_dispersion <- betadisper(binary_jaccard_dist, treatment_group)
+# View the results
+summary(beta_dispersion)
+
+# Perform ANOVA on the beta dispersion results to test for differences between groups
+anova_results <- anova(beta_dispersion)
+print(anova_results)
+
+pairwise_results <- pairwise.adonis(binary_jaccard_dist, treatment_group)
+print(pairwise_results)
+
+
+#-------------------------------------------------------------------------------
+
+# Perform Binary-Jaccard NMDS
+ord.nmds.jaccard <- metaMDS(binary_jaccard_dist, k = 2, trymax = 100)
+
+Jaccard_plot <- plot_ordination(ps, ord.nmds.jaccard, color = "Treatment", shape = "Treatment", 
+                      title = "Binary Jaccard") +
+  scale_color_manual(values = c("C" = "#9FB6CD", "CN" = "#68838B", "HA" = "#00FF00", 
+                                "HAN" = "#008B00", "GB-3" = "#dfc27d", "GBN-3" = "#a6611a")) +
+  geom_point(size = 3) +  # Point size
+  scale_shape_manual(values = c("C" = 17, "HA" = 17, "GB-3" = 17,  # Triangle for C, HA, GB-3
+                                "CN" = 15, "HAN" = 15, "GBN-3" = 15)) +  # Square for CN, HAN, GBN-3
+  stat_ellipse(aes(color = Treatment), type = "t", linetype = "solid", linewidth = 0.6) +  # Add ellipses
+  theme(panel.background = element_rect(fill = "white", color = "white"),  # Set panel background to white
+        plot.background = element_rect(fill = "white", color = "white"),   # Set plot background to white
+        legend.background = element_blank(),  # Remove background of the legend
+        legend.box.background = element_blank(),  # Remove box around the legend
+        panel.grid.major = element_line(color = "light gray", linewidth = 0.4),  # Major grid lines
+        panel.grid.minor = element_line(color = "light gray", linewidth = 0.25),# Minor grid lines
+        legend.title = element_text(size = 16, face = "bold"), # Customize title size) 
+        legend.text = element_text(size = 14),
+        axis.title.x = element_text(size = 16, face = "bold"),
+        axis.title.y = element_text(size = 16, face = "bold"),
+        plot.title = element_text(size = 16, face = "bold"),
+        axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14))
+
+# Print the plot
+print(Jaccard_plot)
+
